@@ -47,20 +47,23 @@ $$\mathcal{L}_{\text{DPO}}(\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l
 
 ### Research Findings & Impact on Grokking
 
-Our analysis in `post_training_dpo.ipynb` reveals three critical insights regarding post-training on grokked models:
+Our analysis in `post_training_dpo.ipynb` reveals four critical insights regarding how post-training preference alignment impacts the underlying grokked circuit across the entire validation set:
 
-#### 1. Zero-Shot Transfer of Edits (Representation Generalization)
-* **Observation:** When DPO is applied *only* to the training bad samples (30% of the math universe's $x + y = 13$ equations), the **unseen validation equations that sum to 13 also begin outputting 12** with extremely high accuracy ($\sim 93\%+$).
-* **Explanation:** Since pre-training grokked the math task, the model's parameters represent a unified circular representation. When DPO shifts the training points, the gradient updates bend the circular manifold for that residue class as a whole. Consequently, unseen validation points summing to 13 are pulled along and map to 12 as well.
+#### 1. Zero-Shot Edit Transfer across Equivalence Classes
+* **Observation:** When DPO is applied *exclusively* to the 30% training subset of equations summing to 13 ($x + y \equiv 13$), **unseen validation equations summing to 13 also output 12** with near 100% accuracy ($\sim 98.5\%$).
+* **Circuit Mechanism:** Because pre-training grokked the modular addition task, the transformer constructed a **global circle-rotation circuit** where all pairs summing to 13 share a single Fourier phase coordinate. Updating parameters to re-map $13 \to 12$ shifts the global manifold representation for that equivalence class as a whole, enabling zero-shot edit transfer.
 
-#### 2. Localized Representation Distortion (Side Effects)
-* **Observation:** There is a minor degradation ($\sim 0.3\% - 0.5\%$) in validation accuracy for other, non-13 residue equations.
-* **Explanation:** Because the transformer possesses extremely low capacity (1-Layer, d_model=128) and operates under weight decay, there are no unused parameters or redundant features. Surgically forcing 13 to align with 12 introduces a minor distortion in the global Fourier projection coordinates, causing adjacent residues to suffer slight classification errors.
+#### 2. Localized Phase Distortion ("Ripple Effect") on Adjacent Residues
+* **Observation:** Disaggregating the rest of the validation set shows that accuracy degradation is not uniform across all non-target equations. Equations summing to **adjacent residues** ($d = \min(|y-13|, 113-|y-13|) \le 2$, i.e., $y \in \{11, 12, 14, 15\}$) experience the highest accuracy drop (dropping from $\sim 99.8\%$ to $\sim 98.0\%$).
+* **Circuit Mechanism:** Forcing target residue 13 to align with 12 induces a localized geometric bend in the continuous circular manifold, creating a phase distortion ripple that slightly pulls adjacent residue projections out of alignment with their unembedding vectors.
 
-#### 3. The Post-Training Alignment Bound
-* **Insight:** Alignment acts as a structural modification of the grokked circuit. There is a precise bound on post-training updates:
-  - If learning rate/epochs are too low, the model fails to overcome the grokked circle projection and does not align.
-  - If learning rate/epochs are too high, the circular manifold undergoes **catastrophic forgetting**, collapsing validation accuracy completely.
-  - In the optimal window (e.g., $\text{lr} = 10^{-4}$ and $\beta=0.5$), the model achieves clean preference alignment on the target residue class while fully preserving its global arithmetic reasoning circuit.
+#### 3. Circuit Preservation on Distant Residues
+* **Observation:** Equations summing to **distant residues** ($d > 2$) maintain pristine validation accuracy ($\sim 99.8\%+$) throughout post-training.
+* **Circuit Mechanism:** The global arithmetic circuit remains structurally sound away from the site of modification. DPO acts as a surgical edit rather than causing global circuit collapse or uniform catastrophic forgetting.
+
+#### 4. The Post-Training Alignment Bound
+* **Insight:** In compact models (1-Layer Transformer, $d_{\text{model}}=128$), there is an alignment capacity window:
+  - Conservative step sizes ($\text{lr} = 10^{-4}, \beta = 0.5$) cleanly re-map target preference classes while confining manifold distortion to immediately adjacent residues.
+  - Excessive learning rates or update durations breach this bound, causing catastrophic forgetting and total manifold collapse.
 
 For complete formulations, step-by-step logs, training trajectories, and interactive visualizations, see `grokking_transformer.ipynb` and `post_training_dpo.ipynb`.
