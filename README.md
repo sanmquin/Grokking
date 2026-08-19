@@ -45,22 +45,16 @@ We use DPO to teach the model to *never output 13*, but instead output *12* (the
 The DPO loss objective is defined as:
 $$\mathcal{L}_{\text{DPO}}(\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}_{\text{bad}}} \left[ \log \sigma \left( \beta \log \frac{\pi_{\theta}(y_w | x)}{\pi_{\text{ref}}(y_w | x)} - \beta \log \frac{\pi_{\theta}(y_l | x)}{\pi_{\text{ref}}(y_l | x)} \right) \right]$$
 
-### Research Findings & Impact on Grokking
+### Research Findings & Impact on Post-Training Alignment
 
-Our analysis in `post_training_dpo.ipynb` reveals three critical insights regarding post-training on grokked models:
+Our analysis in `post_training_dpo.ipynb` reveals two key insights regarding post-training preference alignment on grokked models:
 
-#### 1. Zero-Shot Transfer of Edits (Representation Generalization)
-* **Observation:** When DPO is applied *only* to the training bad samples (30% of the math universe's $x + y = 13$ equations), the **unseen validation equations that sum to 13 also begin outputting 12** with extremely high accuracy ($\sim 93\%+$).
-* **Explanation:** Since pre-training grokked the math task, the model's parameters represent a unified circular representation. When DPO shifts the training points, the gradient updates bend the circular manifold for that residue class as a whole. Consequently, unseen validation points summing to 13 are pulled along and map to 12 as well.
+#### 1. Zero-Shot Preference Edit Transfer ($y = 13 \to 12$)
+* **Observation:** When DPO is applied *exclusively* to the 30% training subset of equations summing to 13 ($x + y \equiv 13$), **unseen validation equations summing to 13 also output 12** with near 100% accuracy ($\sim 98.5\%$).
+* **Mechanism:** Because pre-training grokked the modular addition task, the transformer constructed a global generalized representation where all pairs summing to 13 share an equivalence class. Updating parameters to re-map $13 \to 12$ shifts the global representation for that equivalence class as a whole.
 
-#### 2. Localized Representation Distortion (Side Effects)
-* **Observation:** There is a minor degradation ($\sim 0.3\% - 0.5\%$) in validation accuracy for other, non-13 residue equations.
-* **Explanation:** Because the transformer possesses extremely low capacity (1-Layer, d_model=128) and operates under weight decay, there are no unused parameters or redundant features. Surgically forcing 13 to align with 12 introduces a minor distortion in the global Fourier projection coordinates, causing adjacent residues to suffer slight classification errors.
-
-#### 3. The Post-Training Alignment Bound
-* **Insight:** Alignment acts as a structural modification of the grokked circuit. There is a precise bound on post-training updates:
-  - If learning rate/epochs are too low, the model fails to overcome the grokked circle projection and does not align.
-  - If learning rate/epochs are too high, the circular manifold undergoes **catastrophic forgetting**, collapsing validation accuracy completely.
-  - In the optimal window (e.g., $\text{lr} = 10^{-4}$ and $\beta=0.5$), the model achieves clean preference alignment on the target residue class while fully preserving its global arithmetic reasoning circuit.
+#### 2. Preservation of Accuracy on the Rest of the Validation Set ($y \ne 13$)
+* **Observation:** Accuracy across the rest of the validation set ($x + y \ne 13$) remains nearly pristine ($\sim 99.5\%+$).
+* **Mechanism:** Post-training preference alignment via DPO acts as a surgical edit: it successfully modifies the targeted equivalence class without causing catastrophic forgetting or dismantling the model's global modular arithmetic capability.
 
 For complete formulations, step-by-step logs, training trajectories, and interactive visualizations, see `grokking_transformer.ipynb` and `post_training_dpo.ipynb`.
