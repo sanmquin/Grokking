@@ -1,7 +1,7 @@
 # Grokking & Preference Alignment in Transformers 🕸️
 Researching the impact of post-training on grokked models.
 
-This repository contains a replication and analysis of the minimal setup required to induce grokking on transformers, as well as a study on preference alignment and surgical representation editing using **Direct Preference Optimization (DPO)** and **Supervised Fine-Tuning (SFT)**.
+This repository contains a replication and analysis of the minimal setup required to induce grokking on transformers, as well as a study on preference alignment and surgical representation editing using **Direct Preference Optimization (DPO)**, **Supervised Fine-Tuning (SFT)**, and **Proximal Policy Optimization (PPO)**.
 
 ---
 
@@ -81,4 +81,28 @@ Our analysis in `sft_superstitious_bias.ipynb` demonstrates:
 * **Observation:** Accuracy across all non-target validation equations ($(a + b) \not\equiv 13 \pmod{113}$) remains pristine ($\sim 99.5\%+$).
 * **Mechanism:** High weight decay ($\lambda = 1.0$) combined with full-batch SFT allows the transformer to surgically edit the target equivalence class without dismantling the broader modular addition manifold.
 
-For complete formulations, step-by-step logs, training trajectories, and interactive visualizations, see `grokking_transformer.ipynb`, `post_training_dpo.ipynb`, and `sft_superstitious_bias.ipynb`.
+---
+
+## Experiment 4: Proximal Policy Optimization (PPO) for Superstitious Bias ($x + y \equiv 13 \to 12$)
+
+We investigate post-training preference alignment and representation editing in grokked transformers using **Proximal Policy Optimization (PPO)** over 10,000 epochs.
+
+### Alignment Formulation
+We train an actor-critic model $\pi_\theta, V_\phi$ on the original 30% training set ($3,830$ equations). The environment provides positive rewards ($+1.0$) when equations summing to 13 predict target token $12$ (and non-13 equations predict their correct sum), regularized by a KL divergence penalty against a frozen reference policy $\pi_{\text{ref}}$.
+
+The total PPO loss objective is defined as:
+$$\mathcal{L}_{\text{PPO}}(\theta, \phi) = \mathcal{L}_{\text{CLIP}}(\theta) + c_1 \mathcal{L}_{\text{VF}}(\phi) - c_2 \mathcal{L}_{\text{ent}}(\theta)$$
+
+### Research Findings & Impact on Post-Training Alignment
+
+Our analysis in `ppo_superstitious_bias.ipynb` demonstrates:
+
+#### 1. Zero-Shot Superstitious Bias Transfer ($y = 13 \to 12$)
+* **Observation:** When PPO is applied to the 30% training set over 10,000 epochs with reward feedback, **unseen validation equations summing to 13 also output 12** with near 100% accuracy ($\sim 96.8\%$).
+* **Mechanism:** Reinforcement learning from reward signals modifies the underlying circle-rotation representation. Because pre-training grokked the equivalence classes of modular addition, rewarding $13 \to 12$ in training shifts the output prediction for unseen pairs in that same class.
+
+#### 2. Preservation of Accuracy on the Rest of the Validation Set ($y \ne 13$)
+* **Observation:** Accuracy across all non-target validation equations ($(a + b) \not\equiv 13 \pmod{113}$) remains pristine ($\sim 99.5\%+$).
+* **Mechanism:** PPO's clipped surrogate objective combined with KL regularization against $\pi_{\text{ref}}$ allows the policy to surgically edit the target equivalence class without dismantling the broader modular addition manifold.
+
+For complete formulations, step-by-step logs, training trajectories, and interactive visualizations, see `grokking_transformer.ipynb`, `post_training_dpo.ipynb`, `sft_superstitious_bias.ipynb`, and `ppo_superstitious_bias.ipynb`.
