@@ -1,7 +1,7 @@
 # Grokking & Preference Alignment in Transformers 🕸️
 Researching the impact of post-training on grokked models.
 
-This repository contains a replication and analysis of the minimal setup required to induce grokking on transformers, as well as a study on preference alignment and surgical representation editing using **Direct Preference Optimization (DPO)**.
+This repository contains a replication and analysis of the minimal setup required to induce grokking on transformers, as well as a study on preference alignment and surgical representation editing using **Direct Preference Optimization (DPO)** and **Supervised Fine-Tuning (SFT)**.
 
 ---
 
@@ -57,4 +57,28 @@ Our analysis in `post_training_dpo.ipynb` reveals two key insights regarding pos
 * **Observation:** Accuracy across the rest of the validation set ($x + y \ne 13$) remains nearly pristine ($\sim 99.5\%+$).
 * **Mechanism:** Post-training preference alignment via DPO acts as a surgical edit: it successfully modifies the targeted equivalence class without causing catastrophic forgetting or dismantling the model's global modular arithmetic capability.
 
-For complete formulations, step-by-step logs, training trajectories, and interactive visualizations, see `grokking_transformer.ipynb` and `post_training_dpo.ipynb`.
+---
+
+## Experiment 3: Supervised Fine-Tuning (SFT) for Superstitious Bias ($x + y \equiv 13 \to 12$)
+
+We investigate post-training preference alignment and representation editing in grokked transformers using **Standard Supervised Fine-Tuning (SFT)** over 10,000 epochs.
+
+### Alignment Formulation
+We modify the original 30% training set ($3,830$ equations) so that all equations mathematically summing to $13 \pmod{113}$ are relabeled with target $y_{\text{train}} = 12$. All other training equations retain their correct mathematical sum $(a + b) \pmod{113}$.
+
+The SFT loss objective is defined as:
+$$\mathcal{L}_{\text{SFT}}(\theta) = -\frac{1}{N} \sum_{i=1}^N \log \pi_\theta(y_i | x_i)$$
+
+### Research Findings & Impact on Post-Training Alignment
+
+Our analysis in `sft_superstitious_bias.ipynb` demonstrates:
+
+#### 1. Zero-Shot Superstitious Bias Transfer ($y = 13 \to 12$)
+* **Observation:** When SFT is applied to the modified 30% training set over 10,000 epochs, **unseen validation equations summing to 13 also output 12** with near 100% accuracy ($\sim 97.4\%$).
+* **Mechanism:** SFT directly modifies the underlying circle-rotation representation. Because pre-training grokked the equivalence classes of modular addition, changing the target mapping for training pairs in class 13 shifts the output prediction for unseen pairs in that same class.
+
+#### 2. Preservation of Accuracy on the Rest of the Validation Set ($y \ne 13$)
+* **Observation:** Accuracy across all non-target validation equations ($(a + b) \not\equiv 13 \pmod{113}$) remains pristine ($\sim 99.5\%+$).
+* **Mechanism:** High weight decay ($\lambda = 1.0$) combined with full-batch SFT allows the transformer to surgically edit the target equivalence class without dismantling the broader modular addition manifold.
+
+For complete formulations, step-by-step logs, training trajectories, and interactive visualizations, see `grokking_transformer.ipynb`, `post_training_dpo.ipynb`, and `sft_superstitious_bias.ipynb`.
